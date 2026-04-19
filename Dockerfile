@@ -17,16 +17,17 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 
-COPY package*.json ./
-
-RUN npm ci --omit=dev
-
-COPY --from=builder /app/.next ./node_modules/next
+COPY --from=builder /app/.next/standalone/package.json ./
+COPY --from=builder /app/.next/standalone/server.js ./
+COPY --from=builder /app/.next/standalone/.next ./.next
+COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
 EXPOSE 3000
 
+ENV NEXT_PUBLIC_SERVER_URL=http://server:5001
+
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD wget -qO- http://localhost:3000/ || exit 1
 
-CMD ["node", "node_modules/next/dist/bin/next", "start"]
+CMD ["node", "server.js"]
