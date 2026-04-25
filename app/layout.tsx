@@ -22,11 +22,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${appFont.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
-        <div className="fixed right-6 top-6 z-[100]">
-          <AudioControls />
-        </div>
         {children}
       </body>
+
     </html>
   );
 }

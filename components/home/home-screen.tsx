@@ -8,6 +8,8 @@ import { useSoundEffects } from "@/hooks/use-sound-effects";
 import { GAME_EVENTS, type GameMode } from "@/lib/game/contracts";
 import { isValidRoomId, normalizeRoomId } from "@/lib/game/room-id";
 import { emitWithAck, getGameSocket } from "@/lib/socket/game-socket";
+import { useAudioState } from "@/hooks/use-audio-state";
+
 
 const MODE_OPTIONS: Array<{
   mode: GameMode;
@@ -27,7 +29,9 @@ export function HomeScreen() {
   const [teamSize, setTeamSize] = useState(2);
   const [error, setError] = useState("");
   const [loadingState, setLoadingState] = useState<"" | "create" | "join">("");
+  const { isMuted, toggleMute } = useAudioState();
   const { playClick } = useSoundEffects({
+
     roundResult: null,
     result: null,
     homeMusic: true,
@@ -283,6 +287,19 @@ export function HomeScreen() {
           </div>
         </section>
       </div>
+
+      <button
+        onClick={toggleMute}
+        className="fixed bottom-8 right-6 w-14 h-14 glass-panel rounded-full flex items-center justify-center border-white/20 hover:border-primary/50 text-white z-40 shadow-2xl transition-all active:scale-90"
+        title={isMuted ? "Unmute" : "Mute"}
+      >
+        {isMuted ? (
+          <span className="text-xl rotate-12 opacity-50">🔇</span>
+        ) : (
+          <span className="text-xl animate-pulse">🔊</span>
+        )}
+      </button>
     </main>
+
   );
 }

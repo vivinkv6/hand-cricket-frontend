@@ -37,9 +37,16 @@ export function useGameRoom(roomId: string) {
   const [roundResult, setRoundResult] = useState<RoundResult | null>(null);
 
   useEffect(() => {
+    if (!error) return;
+    const timer = setTimeout(() => setError(""), 5000);
+    return () => clearTimeout(timer);
+  }, [error]);
+
+  useEffect(() => {
     if (!hasValidRoomId) {
       return;
     }
+
 
     const socket = getGameSocket();
 
@@ -68,9 +75,11 @@ export function useGameRoom(roomId: string) {
     const onState = (nextRoom: PublicRoomState) => {
       setRoom(nextRoom);
 
+      const isTransition = nextRoom.status === "live" && nextRoom.currentTurn === 0 && nextRoom.innings?.number === 2;
+      
       if (
         nextRoom.status !== "live" ||
-        nextRoom.currentTurn === 0 ||
+        (nextRoom.currentTurn === 0 && !isTransition) ||
         !nextRoom.lastRoundResult
       ) {
         setRoundResult(null);
@@ -109,14 +118,16 @@ export function useGameRoom(roomId: string) {
   );
 
   const visibleRoundResult = useMemo(() => {
+    const isTransitioning = room?.status === "live" && room?.currentTurn === 0 && room?.innings?.number === 2;
+
     if (
       !room ||
       room.status !== "live" ||
-      room.currentTurn === 0 ||
-      !roundResult ||
-      roundResult.deliveryNumber !== room.currentTurn
+      (!roundResult && !isTransitioning) ||
+      (roundResult && roundResult.deliveryNumber !== room.currentTurn && !isTransitioning) ||
+      (room.innings?.currentSpellBalls === 0 && !room.innings?.pendingBowlerSelection && !isTransitioning)
     ) {
-      return null;
+      if (!isTransitioning) return null;
     }
 
     return roundResult;
@@ -128,6 +139,8 @@ export function useGameRoom(roomId: string) {
     }
 
     setError("");
+    setRoundResult(null);
+
     await emitWithAck(event, {
       roomId,
       playerId,

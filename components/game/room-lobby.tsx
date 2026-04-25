@@ -3,6 +3,8 @@
 import { motion } from "framer-motion";
 import type { PublicRoomState, PlayerState, TeamId } from "@/lib/game/contracts";
 import { getDisplayMode, getSwapSideCopy } from "@/lib/game/presentation";
+import { useAudioState } from "@/hooks/use-audio-state";
+
 
 type RoomActions = {
   startGame: () => Promise<void>;
@@ -32,7 +34,9 @@ export function RoomLobby({
   setTeamDraftName: (value: string) => void;
   actions: RoomActions;
 }) {
+  const { isMuted, toggleMute } = useAudioState();
   const myTeam = room.teams.find((team) => team.id === me.teamId)!;
+
   const opponentTeam = room.teams.find((team) => team.id !== me.teamId)!;
   const totalHumans = room.players.filter((player) => !player.isBot).length;
   const isTossWinner = room.toss?.decisionMakerId === me.id;
@@ -260,6 +264,19 @@ export function RoomLobby({
           {renderTeamColumn(opponentTeam.id, "text-sky-300")}
         </section>
       </div>
+
+      <button
+        onClick={toggleMute}
+        className="fixed bottom-8 right-6 w-14 h-14 glass-panel rounded-full flex items-center justify-center border-white/20 hover:border-primary/50 text-white z-40 shadow-2xl transition-all active:scale-90"
+        title={isMuted ? "Unmute" : "Mute"}
+      >
+        {isMuted ? (
+          <span className="text-xl rotate-12 opacity-50">🔇</span>
+        ) : (
+          <span className="text-xl animate-pulse">🔊</span>
+        )}
+      </button>
     </main>
+
   );
 }

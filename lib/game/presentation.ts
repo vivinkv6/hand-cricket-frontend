@@ -31,7 +31,7 @@ export function getPlayerById(room: PublicRoomState, playerId: string | null | u
   return room.players.find((player) => player.id === playerId) ?? null;
 }
 
-export function getResultCopy(result: MatchResult | null, myTeamId?: TeamState["id"]) {
+export function getResultCopy(result: MatchResult | null, mode?: string, myTeamId?: TeamState["id"]) {
   if (!result) {
     return {
       headline: "Match Complete",
@@ -55,11 +55,14 @@ export function getResultCopy(result: MatchResult | null, myTeamId?: TeamState["
       : `${result.margin} run${result.margin === 1 ? "" : "s"}`;
 
   return {
-    headline: didWin ? "You Won" : "You Lost",
-    subline: didWin ? `Won by ${marginLabel}.` : `Lost by ${marginLabel}.`,
+    headline: didWin ? "Congratulations!" : "Hard Luck",
+    subline: mode === "team" 
+      ? (didWin ? `Victory by ${marginLabel}!` : `Defeat by ${marginLabel}.`)
+      : (didWin ? "You dominated the match!" : "Great effort in the chase!"),
     tone: didWin ? ("success" as const) : ("danger" as const),
   };
 }
+
 
 export function getRoundHeadline(roundResult: RoundResult | null) {
   if (!roundResult) {
