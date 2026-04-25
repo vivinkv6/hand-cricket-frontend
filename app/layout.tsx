@@ -1,3 +1,4 @@
+import { AudioControls } from "@/components/shared/audio-controls";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -20,7 +21,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${appFont.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <div className="fixed right-6 top-6 z-[100]">
+          <AudioControls />
+        </div>
+        {children}
+      </body>
     </html>
   );
 }
+

@@ -141,6 +141,7 @@ export function HomeScreen() {
     <main className="stadium-shell relative min-h-screen overflow-hidden px-4 py-6 text-white">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.14),transparent_34%)]" />
       <div className="mx-auto flex max-w-6xl flex-col gap-6">
+
         <section className="rounded-[2rem] border border-white/8 bg-black/16 p-6 shadow-2xl backdrop-blur-sm lg:p-8">
           <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
             <div className="flex flex-col justify-between gap-8">

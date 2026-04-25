@@ -19,16 +19,17 @@ export const GAME_EVENTS = {
 } as const;
 
 export const SOUNDS = {
-  HOME_MUSIC: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
-  BAT_HIT: "https://assets.mixkit.co/active_storage/sfx/2288/2288-preview.mp3",
-  CHEER_SMALL: "https://assets.mixkit.co/active_storage/sfx/2042/2042-preview.mp3",
-  CHEER_BIG: "https://assets.mixkit.co/active_storage/sfx/2043/2043-preview.mp3",
-  WICKET: "https://assets.mixkit.co/active_storage/sfx/2186/2186-preview.mp3",
-  CLICK: "https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3",
-  SIX_COMMENTARY: "https://assets.mixkit.co/active_storage/sfx/2045/2045-preview.mp3",
-  WIN: "https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3",
-  LOSS: "https://assets.mixkit.co/active_storage/sfx/2021/2021-preview.mp3",
+  HOME_MUSIC: "/assets/music/SoundHelix-Song-8.mp3",
+  BAT_HIT: "/assets/music/2288-preview.mp3",
+  CHEER_SMALL: "/assets/music/2042-preview.mp3",
+  CHEER_BIG: "/assets/music/2043-preview.mp3",
+  WICKET: "/assets/music/2186-preview.mp3",
+  CLICK: "/assets/music/2568-preview.mp3",
+  SIX_COMMENTARY: "/assets/music/2045-preview.mp3",
+  WIN: "/assets/music/2019-preview.mp3",
+  LOSS: "/assets/music/2021-preview.mp3",
 } as const;
+
 
 export type GameMode = "solo" | "duel" | "team";
 export type TeamId = "A" | "B";

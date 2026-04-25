@@ -42,6 +42,7 @@ export function GameRoom({ roomId }: { roomId: string }) {
     return (
       <main className="stadium-shell flex min-h-screen items-center justify-center px-4 text-white">
         <div className="glass-panel max-w-lg rounded-[2rem] p-8 text-center">
+
           <p className="broadcast-title text-4xl text-indigo-300">Loading Match</p>
           <p className="mt-3 text-lg text-slate-200/78">
             Bringing your room back onto the field.
