@@ -14,6 +14,11 @@ FROM node:${NODE_VERSION} AS builder
 WORKDIR /app
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
+
+# Pass build arguments for client-side environment variables
+ARG NEXT_PUBLIC_SERVER_URL
+ENV NEXT_PUBLIC_SERVER_URL=${NEXT_PUBLIC_SERVER_URL}
+
 ENV NODE_ENV=production
 # Ensure next.config.js has { output: 'standalone' }
 RUN npm run build

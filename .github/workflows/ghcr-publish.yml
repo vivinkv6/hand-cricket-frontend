@@ -59,8 +59,11 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            NEXT_PUBLIC_SERVER_URL=https://api-hc.vivinkv.me
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
 
       - name: Trigger Coolify deployment
         env:
