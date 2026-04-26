@@ -19,12 +19,11 @@ export function GameRoom({ roomId }: { roomId: string }) {
         : room?.lastRoundResult ?? roundResult,
     [roundResult, room?.lastRoundResult, showWicketTransition],
   );
-  const { playClick } = useSoundEffects({
+const { playClick } = useSoundEffects({
     roundResult: effectiveRoundResult,
     result: room?.result ?? null,
     myTeamId: me?.teamId,
   });
-  const [teamDraftName, setTeamDraftName] = useState("");
   const didAutoStartSolo = useRef(false);
 
   useEffect(() => {
@@ -136,8 +135,6 @@ export function GameRoom({ roomId }: { roomId: string }) {
       connected={connected}
       error={error}
       playClick={playClick}
-      teamDraftName={teamDraftName}
-      setTeamDraftName={setTeamDraftName}
       actions={actions}
     />
   );
