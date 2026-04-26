@@ -51,13 +51,11 @@ export function HomeScreen() {
     reason: "create" | "join" | "reconnect",
   ) => {
     if (!isValidRoomId(roomId)) {
-      console.error("Invalid roomId", { reason, roomId });
       setError("That room could not be opened because the room code is invalid.");
       return;
     }
 
     const safeRoomId = normalizeRoomId(roomId);
-    console.info("[navigation] room", { reason, roomId: safeRoomId });
     router.push(`/room/${safeRoomId}`);
   };
 

@@ -30,17 +30,13 @@ export function getGameSocket() {
 
 export function emitWithAck<T>(event: string, payload: unknown): Promise<T> {
   const activeSocket = getGameSocket();
-  console.info("[socket] emit", { event, payload });
 
   return new Promise((resolve, reject) => {
     activeSocket.timeout(GAME_CONSTANTS.SOCKET_TIMEOUT_MS).emit(event, payload, (error: Error | null, response: T) => {
       if (error) {
-        console.error("[socket] ack error", { event, error });
         reject(error);
         return;
       }
-
-      console.info("[socket] ack", { event, response });
 
       const errorResponse = response as T & AckErrorResponse;
       if (errorResponse && errorResponse.ok === false) {
