@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { emitWithAck, getGameSocket } from "@/lib/socket/game-socket";
+import { GAME_CONSTANTS } from "@/lib/game/constants";
 import {
   GAME_EVENTS,
   type PublicRoomState,
@@ -13,32 +14,100 @@ import { isValidRoomId } from "@/lib/game/room-id";
 
 const storageKey = (roomId: string) => `hand-cricket:session:${roomId}`;
 
+const USERNAME_KEY = "hand-cricket:username";
+const USER_KEY = "user";
+
+function normalizeName(value: string | null | undefined) {
+  return (value ?? "").trim().toLowerCase();
+}
+
 export function readStoredSession(roomId: string) {
   if (typeof window === "undefined") {
     return null;
   }
 
   const value = window.localStorage.getItem(storageKey(roomId));
-  return value ? (JSON.parse(value) as SessionState) : null;
+  const session = value ? (JSON.parse(value) as SessionState) : null;
+  const globalUserValue = window.localStorage.getItem(USER_KEY);
+  const globalUser = globalUserValue
+    ? (JSON.parse(globalUserValue) as {
+        userId?: string;
+        roomId?: string;
+        role?: "batter" | "bowler" | null;
+        playerName?: string;
+      })
+    : null;
+
+  if (session) {
+    return session;
+  }
+
+  const globalName = window.localStorage.getItem(USERNAME_KEY);
+  if (
+    globalUser?.roomId === roomId &&
+    globalUser.userId &&
+    (globalUser.playerName || globalName)
+  ) {
+    return {
+      roomId,
+      playerId: globalUser.userId,
+      playerName: globalUser.playerName ?? globalName ?? "",
+      role: globalUser.role ?? null,
+    } satisfies SessionState;
+  }
+
+  if (globalName) {
+    return {
+      roomId,
+      playerId: "",
+      playerName: globalName,
+      role: null,
+    } satisfies SessionState;
+  }
+
+  return null;
 }
 
 export function saveStoredSession(session: SessionState) {
+  if (typeof window === "undefined") return;
   window.localStorage.setItem(storageKey(session.roomId), JSON.stringify(session));
+  if (session.playerName) {
+    window.localStorage.setItem(USERNAME_KEY, session.playerName);
+  }
+  window.localStorage.setItem(
+    USER_KEY,
+    JSON.stringify({
+      userId: session.playerId,
+      roomId: session.roomId,
+      role: session.role ?? null,
+      playerName: session.playerName,
+    }),
+  );
 }
 
 export function useGameRoom(roomId: string) {
-  const storedSession = useMemo(() => readStoredSession(roomId), [roomId]);
   const hasValidRoomId = isValidRoomId(roomId);
   const [room, setRoom] = useState<PublicRoomState | null>(null);
-  const [playerId] = useState<string | null>(storedSession?.playerId ?? null);
-  const [playerName] = useState<string>(storedSession?.playerName ?? "");
+  const [playerId, setPlayerId] = useState<string | null>(null);
+  const [playerName, setPlayerName] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [connected, setConnected] = useState(false);
   const [roundResult, setRoundResult] = useState<RoundResult | null>(null);
 
   useEffect(() => {
+    const session = readStoredSession(roomId);
+    if (session) {
+      setPlayerId(session.playerId || null);
+      setPlayerName(session.playerName);
+    } else if (typeof window !== "undefined") {
+      const globalName = window.localStorage.getItem(USERNAME_KEY);
+      if (globalName) setPlayerName(globalName);
+    }
+  }, [roomId]);
+
+  useEffect(() => {
     if (!error) return;
-    const timer = setTimeout(() => setError(""), 5000);
+    const timer = setTimeout(() => setError(""), GAME_CONSTANTS.ERROR_DISPLAY_DURATION_MS);
     return () => clearTimeout(timer);
   }, [error]);
 
@@ -47,22 +116,45 @@ export function useGameRoom(roomId: string) {
       return;
     }
 
-
     const socket = getGameSocket();
 
     const onConnect = async () => {
       setConnected(true);
 
-      if (storedSession) {
+      const session = readStoredSession(roomId);
+      const nameToUse =
+        session?.playerName ||
+        (typeof window !== "undefined"
+          ? window.localStorage.getItem(USERNAME_KEY)
+          : null);
+
+      if (session?.playerId || nameToUse) {
         try {
-          console.info("[room] rejoin attempt", {
-            roomId,
-            playerId: storedSession.playerId,
-          });
-          await emitWithAck(GAME_EVENTS.REJOIN_ROOM, {
-            roomId,
-            playerId: storedSession.playerId,
-          });
+          const response = await emitWithAck<{
+            ok: boolean;
+            playerId: string;
+            room?: PublicRoomState;
+          }>(
+            GAME_EVENTS.REJOIN_ROOM,
+            {
+              roomId,
+              playerId: session?.playerId || undefined,
+              playerName: nameToUse || undefined,
+            },
+          );
+
+          if (response.ok && response.playerId && nameToUse) {
+            setPlayerId(response.playerId);
+            if (response.room) {
+              setRoom(response.room);
+            }
+            saveStoredSession({
+              roomId,
+              playerId: response.playerId,
+              playerName: nameToUse,
+              role: session?.role ?? null,
+            });
+          }
         } catch (rejoinError) {
           setError(
             rejoinError instanceof Error ? rejoinError.message : "Unable to rejoin room.",
@@ -73,10 +165,42 @@ export function useGameRoom(roomId: string) {
 
     const onDisconnect = () => setConnected(false);
     const onState = (nextRoom: PublicRoomState) => {
+      if (!nextRoom) return;
       setRoom(nextRoom);
 
-      const isTransition = nextRoom.status === "live" && nextRoom.currentTurn === 0 && nextRoom.innings?.number === 2;
-      
+      const activePlayer =
+        (playerId
+          ? nextRoom.players.find((player) => player.id === playerId)
+          : null) ??
+        nextRoom.players.find(
+          (player) =>
+            !player.isBot &&
+            normalizeName(player.name) === normalizeName(playerName),
+        ) ??
+        null;
+      if (activePlayer) {
+        if (activePlayer.id !== playerId) {
+          setPlayerId(activePlayer.id);
+        }
+        const role =
+          nextRoom.innings?.currentBatterId === activePlayer.id
+            ? "batter"
+            : nextRoom.innings?.currentBowlerId === activePlayer.id
+              ? "bowler"
+              : null;
+        saveStoredSession({
+          roomId: nextRoom.id,
+          playerId: activePlayer.id,
+          playerName: activePlayer.name,
+          role,
+        });
+      }
+
+      const isTransition =
+        nextRoom.status === "live" &&
+        nextRoom.currentTurn === 0 &&
+        nextRoom.innings?.number === 2;
+
       if (
         nextRoom.status !== "live" ||
         (nextRoom.currentTurn === 0 && !isTransition) ||
@@ -88,7 +212,14 @@ export function useGameRoom(roomId: string) {
 
       setRoundResult(nextRoom.lastRoundResult);
     };
-    const onRound = (result: RoundResult) => setRoundResult(result);
+    const onRound = (result: RoundResult) => {
+      setRoom((prev) => {
+        if (prev) {
+          setRoundResult(result);
+        }
+        return prev;
+      });
+    };
     const onError = (payload: { message: string }) => setError(payload.message);
 
     socket.on("connect", onConnect);
@@ -110,27 +241,59 @@ export function useGameRoom(roomId: string) {
       socket.off(GAME_EVENTS.ROUND_RESULT, onRound);
       socket.off(GAME_EVENTS.ERROR, onError);
     };
-  }, [hasValidRoomId, roomId, storedSession]);
+  }, [hasValidRoomId, playerId, playerName, roomId]);
 
   const me = useMemo(
-    () => room?.players.find((player) => player.id === playerId) ?? null,
-    [playerId, room?.players],
+    () =>
+      room?.players.find((player) => player.id === playerId) ??
+      room?.players.find(
+        (player) =>
+          !player.isBot &&
+          normalizeName(player.name) === normalizeName(playerName),
+      ) ??
+      null,
+    [playerId, playerName, room?.players],
   );
 
   const visibleRoundResult = useMemo(() => {
-    const isTransitioning = room?.status === "live" && room?.currentTurn === 0 && room?.innings?.number === 2;
+    if (!room || !roundResult) return null;
+    const innings = room.innings;
 
-    if (
-      !room ||
-      room.status !== "live" ||
-      (!roundResult && !isTransitioning) ||
-      (roundResult && roundResult.deliveryNumber !== room.currentTurn && !isTransitioning) ||
-      (room.innings?.currentSpellBalls === 0 && !room.innings?.pendingBowlerSelection && !isTransitioning)
-    ) {
-      if (!isTransitioning) return null;
+    if (!innings || room.status !== "live") {
+      return null;
     }
 
-    return roundResult;
+    if (roundResult.inningsNumber !== innings.number) {
+      return null;
+    }
+
+    if (innings.pendingBowlerSelection) {
+      return roundResult.isOut && roundResult.ballInOver === 6 ? roundResult : null;
+    }
+
+    const activeBatter = innings.currentBatterId
+      ? room.players.find((player) => player.id === innings.currentBatterId) ?? null
+      : null;
+    const activeBowler = innings.currentBowlerId
+      ? room.players.find((player) => player.id === innings.currentBowlerId) ?? null
+      : null;
+    const selectionInProgress = Boolean(
+      activeBatter?.currentSelection !== null || activeBowler?.currentSelection !== null,
+    );
+
+    if (selectionInProgress) {
+      return null;
+    }
+
+    if (
+      innings.currentBowlerId &&
+      innings.currentSpellBalls === 0 &&
+      roundResult.ballInOver === 6
+    ) {
+      return null;
+    }
+
+    return roundResult.deliveryNumber === room.currentTurn ? roundResult : null;
   }, [room, roundResult]);
 
   const runAction = async (event: string, payload: Record<string, unknown>) => {

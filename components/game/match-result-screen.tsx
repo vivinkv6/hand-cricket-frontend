@@ -117,7 +117,26 @@ export function MatchResultScreen({
         </motion.section>
       )}
 
+      {Object.keys(room.rematchVotes).length > 0 && (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 flex flex-wrap justify-center gap-2"
+        >
+          {Object.keys(room.rematchVotes).map(playerId => {
+            const voter = room.players.find(p => p.id === playerId);
+            if (!voter) return null;
+            return (
+              <span key={playerId} className="px-3 py-1 rounded-full bg-primary/20 border border-primary/30 text-[10px] uppercase tracking-widest text-primary font-black">
+                {voter.name} Ready
+              </span>
+            );
+          })}
+        </motion.div>
+      )}
+
       <footer className="w-full max-w-2xl flex gap-4 mb-24">
+
          {room.rematchVotes[me.id] ? (
             <div className="flex-1 glass-panel py-5 rounded-2xl border-primary/30 flex items-center justify-center gap-3">
                <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />

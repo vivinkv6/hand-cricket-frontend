@@ -2,6 +2,7 @@
 
 import { io, type Socket } from "socket.io-client";
 import { isValidRoomId } from "@/lib/game/room-id";
+import { GAME_CONSTANTS } from "@/lib/game/constants";
 
 let socket: Socket | null = null;
 
@@ -32,7 +33,7 @@ export function emitWithAck<T>(event: string, payload: unknown): Promise<T> {
   console.info("[socket] emit", { event, payload });
 
   return new Promise((resolve, reject) => {
-    activeSocket.timeout(8000).emit(event, payload, (error: Error | null, response: T) => {
+    activeSocket.timeout(GAME_CONSTANTS.SOCKET_TIMEOUT_MS).emit(event, payload, (error: Error | null, response: T) => {
       if (error) {
         console.error("[socket] ack error", { event, error });
         reject(error);

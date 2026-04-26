@@ -1,0 +1,14 @@
+{
+  "rooms": {
+    "solo": "TEST01",
+    "duel": "TEST02",
+    "team": "TEST03"
+  },
+  "players": {
+    "captain": "Captain",
+    "player1": "Player1", 
+    "player2": "Player2"
+  },
+  "gameModes": ["solo", "duel", "team"],
+  "numberSelections": [1, 2, 3, 4, 5, 6]
+}

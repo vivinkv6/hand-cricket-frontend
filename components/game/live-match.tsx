@@ -42,12 +42,39 @@ export function LiveMatch({
   const [showTeam, setShowTeam] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [lockedSelection, setLockedSelection] = useState<number | null>(null);
+  const [bowlerSelectionDelayComplete, setBowlerSelectionDelayComplete] = useState(false);
   const { isMuted, toggleMute } = useAudioState();
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(room.id);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    const text = room.id;
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }).catch(() => {
+        fallbackCopy(text);
+      });
+    } else {
+      fallbackCopy(text);
+    }
+  };
+
+  const fallbackCopy = (text: string) => {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    document.body.appendChild(textArea);
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Silent fail
+    }
+    document.body.removeChild(textArea);
   };
 
   const innings = room.innings;
@@ -57,6 +84,14 @@ export function LiveMatch({
   
   const activeBatter = getPlayerById(room, innings?.currentBatterId);
   const activeBowler = getPlayerById(room, innings?.currentBowlerId);
+  const displayedBatterSelection =
+    activeBatter?.currentSelection ??
+    (activeBatter?.id === me.id ? lockedSelection : null);
+  const displayedBowlerSelection =
+    activeBowler?.currentSelection ??
+    (activeBowler?.id === me.id ? lockedSelection : null);
+  const hasAnyLockedSelection =
+    displayedBatterSelection !== null || displayedBowlerSelection !== null;
 
   const mySidePlayer = me.teamId === innings?.battingTeamId ? activeBatter : activeBowler;
   const opponentSidePlayer = me.teamId === innings?.battingTeamId ? activeBowler : activeBatter;
@@ -69,6 +104,59 @@ export function LiveMatch({
       [innings.currentBatterId, innings.currentBowlerId].includes(me.id) &&
       me.currentSelection === null
   );
+  const shouldDelayBowlerSelection = Boolean(
+    innings?.pendingBowlerSelection &&
+      room.lastRoundResult?.isOut &&
+      room.lastRoundResult.ballInOver === 6 &&
+      room.lastRoundResult.inningsNumber === innings.number,
+  );
+  const shouldShowPriorityWicketResult = Boolean(
+    room.lastRoundResult?.isOut &&
+      room.lastRoundResult.ballInOver === 6 &&
+      innings?.pendingBowlerSelection &&
+      room.lastRoundResult.inningsNumber === innings?.number,
+  );
+  const latestRoomResult =
+    room.lastRoundResult && room.lastRoundResult.inningsNumber === innings?.number
+      ? room.lastRoundResult
+      : null;
+  const priorityWicketResult = shouldShowPriorityWicketResult
+    ? room.lastRoundResult
+    : null;
+  const displayRoundResult =
+    priorityWicketResult ??
+    (!hasAnyLockedSelection ? latestRoomResult : null) ??
+    roundResult;
+  const isAwaitingResponse = Boolean(
+    room.status === "live" &&
+      innings &&
+      !innings.pendingBowlerSelection &&
+      hasAnyLockedSelection &&
+      !displayRoundResult
+  );
+
+  useEffect(() => {
+    if (room.lastRoundResult || me.currentSelection === null) {
+      setLockedSelection(null);
+    }
+  }, [me.currentSelection, room.lastRoundResult]);
+
+  useEffect(() => {
+    if (!shouldDelayBowlerSelection) {
+      setBowlerSelectionDelayComplete(false);
+      return;
+    }
+
+    setBowlerSelectionDelayComplete(false);
+    const timer = window.setTimeout(() => {
+      setBowlerSelectionDelayComplete(true);
+    }, 2000);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    shouldDelayBowlerSelection,
+    room.lastRoundResult?.deliveryNumber,
+  ]);
 
   /**
    * ABSOLUTE TRACKING LOGIC
@@ -78,14 +166,12 @@ export function LiveMatch({
    */
   const currentTurn = room.currentTurn;
   const highlightIndex = useMemo(() => {
-    // Reset to first ball if starting a fresh innings
-    if (room.innings?.number === 2 && room.currentTurn === 0) return 0;
+    if (displayRoundResult) {
+      return displayRoundResult.ballInOver - 1;
+    }
 
-    if (!roundResult) return currentTurn % 6;
-    // If showing a result, highlight the ball that just happened
-    return (roundResult.deliveryNumber - 1) % 6;
-  }, [currentTurn, roundResult, room.innings?.number]);
-
+    return Math.max(room.gameState.currentBall - 1, 0);
+  }, [displayRoundResult, room.gameState.currentBall]);
 
   return (
     <main className="stadium-shell min-h-screen flex flex-col text-white font-sans overflow-hidden">
@@ -119,7 +205,7 @@ export function LiveMatch({
              </div>
              <h1 className="broadcast-title text-3xl font-black">
                 {battingTeam?.name}: {battingTeam?.score}/{battingTeam?.wickets}
-                <span className="text-xl text-slate-400 ml-2">({formatOvers(room.currentTurn)})</span>
+                <span className="text-xl text-slate-400 ml-2">({formatOvers(room.gameState.totalBalls)})</span>
              </h1>
         </div>
 
@@ -182,11 +268,26 @@ export function LiveMatch({
                 
                 <div className="shrink-0 w-full h-48 flex flex-col items-center justify-center pt-8">
                     <AnimatePresence mode="wait">
-                        {roundResult ? (
-                            <motion.div key={roundResult.deliveryNumber} initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex flex-col items-center">
+                        {displayRoundResult ? (
+                            <motion.div key={displayRoundResult.deliveryNumber} initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex flex-col items-center">
                                 <div className="broadcast-label text-primary mb-2">Delivery Result</div>
-                                <div className={`text-8xl font-black italic drop-shadow-2xl ${roundResult.isOut ? "text-red-500" : "text-white"}`}>
-                                    {roundResult.label}
+                                <div className={`text-8xl font-black italic drop-shadow-2xl ${displayRoundResult.isOut ? "text-red-500" : "text-white"}`}>
+                                    {displayRoundResult.label}
+                                </div>
+                            </motion.div>
+                        ) : isAwaitingResponse ? (
+                            <motion.div
+                              key="awaiting-response"
+                              initial={{ opacity: 0, scale: 0.96 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              className="flex flex-col items-center text-center"
+                            >
+                                <div className="broadcast-label text-primary mb-2">Selection Locked</div>
+                                <div className="text-6xl font-black italic text-white drop-shadow-2xl">
+                                    Awaiting Response
+                                </div>
+                                <div className="mt-3 text-sm uppercase tracking-[0.18em] text-slate-400">
+                                    Waiting for the other player
                                 </div>
                             </motion.div>
                         ) : (
@@ -210,28 +311,23 @@ export function LiveMatch({
 
                   <div className="flex justify-center items-center gap-3">
                     {Array.from({ length: 6 }).map((_, i) => {
-                        /**
-                         * Logic: We align the 6 circles with the current over block.
-                         * If currentTurn is 7, circles show balls 7, 8, 9, 10, 11, 12.
-                         * The ballData is mapped by finding the match in room.innings.overHistory.
-                         */
-                        const ballData = innings?.overHistory?.[i];
-                        const isHighlight = i === highlightIndex;
-                        
-                        return (
-                            <motion.div 
-                              key={i} 
-                              animate={isHighlight && !innings?.pendingBowlerSelection && room.status === 'live' ? { scale: [1, 1.1, 1], borderColor: ["rgba(255,255,255,0.1)", "rgba(234, 179, 8, 1)", "rgba(255,255,255,0.1)"] } : {}}
-                              transition={{ repeat: Infinity, duration: 2 }}
-                              className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-black border-2 transition-all ${
-                                isHighlight && !innings?.pendingBowlerSelection && room.status === 'live'
-                                ? "border-primary text-primary shadow-[0_0_15px_rgba(234,179,8,0.3)] bg-primary/5"
-                                : ballData ? (ballData.isOut ? "bg-red-500 border-red-500 text-white shadow-[0_0_10px_rgba(239,68,68,0.3)]" : "bg-white/10 border-white/10 text-white") : "bg-transparent border-white/5 text-slate-800"
-                              }`}
-                            >
-                              {ballData ? (ballData.isOut ? "W" : ballData.runs) : ""}
-                            </motion.div>
-                        )
+                      const ballData = innings?.overHistory?.[i];
+                      const isHighlight = i === highlightIndex;
+                      
+                      return (
+                          <motion.div 
+                            key={i} 
+                            animate={isHighlight && !innings?.pendingBowlerSelection && room.status === 'live' ? { scale: [1, 1.1, 1] } : {}}
+                            transition={{ repeat: Infinity, duration: 2 }}
+                            className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-black border-2 transition-all ${
+                              isHighlight && !innings?.pendingBowlerSelection && room.status === 'live'
+                              ? "border-primary text-primary shadow-[0_0_15px_rgba(234,179,8,0.3)] bg-primary/5"
+                              : ballData ? (ballData.isOut ? "bg-red-500 border-red-500 text-white shadow-[0_0_10px_rgba(239,68,68,0.3)]" : "bg-white/10 border-white/10 text-white") : "bg-transparent border-white/5 text-slate-800"
+                            }`}
+                          >
+                            {ballData ? (ballData.isOut ? "W" : ballData.runs) : ""}
+                          </motion.div>
+                      )
                     })}
                   </div>
                 </div>
@@ -246,13 +342,21 @@ export function LiveMatch({
                         disabled={!canSelectNumbers || isSubmitting}
                         onClick={async () => {
                             setIsSubmitting(true);
+                            setLockedSelection(num);
                             playClick();
-                            try { await actions.selectNumber(num); } finally { setIsSubmitting(false); }
+                            try {
+                              await actions.selectNumber(num);
+                            } catch (selectionError) {
+                              setLockedSelection(null);
+                              throw selectionError;
+                            } finally {
+                              setIsSubmitting(false);
+                            }
                         }}
                         className={`h-24 rounded-3xl broadcast-title text-4xl flex items-center justify-center transition-all ${
                             canSelectNumbers && !isSubmitting
                             ? "bg-white/10 hover:bg-white/20 border-white/20 hover:border-primary/50 text-white shadow-xl" 
-                            : me.currentSelection === num ? "bg-primary text-black border-primary scale-95" : "bg-white/5 border-white/5 text-slate-700 grayscale"
+                            : (me.currentSelection === num || lockedSelection === num) ? "bg-primary text-black border-primary scale-95" : "bg-white/5 border-white/5 text-slate-700 grayscale"
                         } border-2 overflow-hidden relative group`}
                         >
                         {num}
@@ -262,8 +366,11 @@ export function LiveMatch({
                     </div>
                     <div className="h-4 flex items-center">
                         <AnimatePresence>
-                            {isMyTurn && !innings?.pendingBowlerSelection && me.currentSelection === null && (
+                            {isMyTurn && !innings?.pendingBowlerSelection && !hasAnyLockedSelection && (
                                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-primary broadcast-label font-black text-[10px] uppercase tracking-widest animate-pulse">Your Turn to Play</motion.div>
+                            )}
+                            {isAwaitingResponse && (
+                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-slate-300 broadcast-label font-black text-[10px] uppercase tracking-widest animate-pulse">Awaiting Response</motion.div>
                             )}
                         </AnimatePresence>
                     </div>
@@ -363,7 +470,7 @@ export function LiveMatch({
                                 <div key={team.id} className="space-y-4">
                                     <div className="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/5">
                                         <span className="broadcast-title text-xl text-accent">{team.name}</span>
-                                        <span className="broadcast-title text-2xl font-black">{team.score} / {team.wickets} <span className="text-sm text-slate-500">({formatOvers(room.currentTurn)})</span></span>
+                                        <span className="broadcast-title text-2xl font-black">{team.score} / {team.wickets} <span className="text-sm text-slate-500">({formatOvers(room.gameState.totalBalls)})</span></span>
                                     </div>
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-left text-sm">
@@ -387,27 +494,32 @@ export function LiveMatch({
       </AnimatePresence>
 
       {/* BOWLER SELECTION MODAL */}
-      <AnimatePresence>
-        {innings?.pendingBowlerSelection && me.isCaptain && me.teamId === innings.bowlingTeamId && (
-          <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="fixed bottom-0 inset-x-0 z-40 glass-panel border-t-4 border-primary rounded-t-[3rem] p-8 pb-16 shadow-[0_-30px_60px_rgba(0,0,0,0.8)]">
-            <div className="max-w-4xl mx-auto">
-                <h2 className="broadcast-title text-3xl text-center mb-8 italic">Captain's Call: Choose Bowler</h2>
-                <div className="flex gap-4 overflow-x-auto no-scrollbar pb-4 -mx-4 px-4">
-                {room.players.filter(p => p.teamId === me.teamId && !p.isBot).map(p => (
-                    <button key={p.id} onClick={() => { playClick(); actions.selectBowler(p.id); }} className="flex-shrink-0 w-56 glass-panel p-6 rounded-3xl border-white/10 hover:border-primary/50 hover:bg-white/5 transition-all text-left">
-                    <p className="broadcast-title text-lg text-white truncate mb-4">{p.name}</p>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                        <div className="flex flex-col"><span className="text-[10px] text-slate-500 uppercase tracking-widest">Overs</span><span className="text-lg font-black">{formatOvers(p.deliveriesBowled)}</span></div>
-                        <div className="flex flex-col"><span className="text-[10px] text-slate-500 uppercase tracking-widest">Wkts</span><span className="text-lg font-black text-accent">{p.wicketsTaken}</span></div>
-                        <div className="flex flex-col"><span className="text-[10px] text-slate-500 uppercase tracking-widest">ECO</span><span className="text-lg font-black">{formatEconomy(p.runsConceded, p.deliveriesBowled)}</span></div>
-                    </div>
-                    </button>
-                ))}
-                </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {innings && 
+       room.status === 'live' && 
+       innings.pendingBowlerSelection && 
+       (!shouldDelayBowlerSelection || bowlerSelectionDelayComplete) &&
+       me && 
+       (me.isCaptain || room.teams.find(t => t.id === me.teamId)?.captainId === me.id) && 
+       me.teamId === innings.bowlingTeamId && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-xl p-4">
+          <div className="w-full max-w-4xl glass-panel border-t-4 border-primary rounded-[3rem] p-8 shadow-2xl">
+              <h2 className="broadcast-title text-3xl text-center mb-8 italic">Captain's Call: Choose Bowler</h2>
+              <div className="flex gap-4 overflow-x-auto no-scrollbar pb-4 -mx-4 px-4 justify-center">
+              {room.players.filter(p => p.teamId === me.teamId && !p.isBot).map(p => (
+                  <button key={p.id} onClick={() => { playClick(); actions.selectBowler(p.id); }} className="flex-shrink-0 w-56 glass-panel p-6 rounded-3xl border-white/10 hover:border-primary/50 hover:bg-white/5 transition-all text-left">
+                  <p className="broadcast-title text-lg text-white truncate mb-4">{p.name}</p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                      <div className="flex flex-col"><span className="text-[10px] text-slate-500 uppercase tracking-widest">Overs</span><span className="text-lg font-black">{formatOvers(p.deliveriesBowled)}</span></div>
+                      <div className="flex flex-col"><span className="text-[10px] text-slate-500 uppercase tracking-widest">Wkts</span><span className="text-lg font-black text-accent">{p.wicketsTaken}</span></div>
+                      <div className="flex flex-col"><span className="text-[10px] text-slate-500 uppercase tracking-widest">ECO</span><span className="text-lg font-black">{formatEconomy(p.runsConceded, p.deliveriesBowled)}</span></div>
+                  </div>
+                  </button>
+              ))}
+              </div>
+          </div>
+        </div>
+      )}
+
 
       <button onClick={toggleMute} className="fixed bottom-24 right-6 w-14 h-14 glass-panel rounded-full flex items-center justify-center border-white/20 hover:border-primary/50 text-white z-40 shadow-2xl transition-all active:scale-90" title={isMuted ? "Unmute" : "Mute"}>
         {isMuted ? <span className="text-xl rotate-12 opacity-50">🔇</span> : <span className="text-xl animate-pulse">🔊</span>}
