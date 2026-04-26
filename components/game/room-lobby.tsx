@@ -28,7 +28,7 @@ export function RoomLobby({
   actions: RoomLobbyActions;
 }) {
   const canManageTeams =
-    room.mode !== "solo" && ["waiting", "ready", "completed"].includes(room.status);
+    room.mode === "team" && ["waiting", "ready", "completed"].includes(room.status);
   const canStartGame =
     me.isCaptain && (room.status === "ready" || room.status === "waiting");
   const isTossDecisionMaker = room.status === "toss" && room.toss?.decisionMakerId === me.id;

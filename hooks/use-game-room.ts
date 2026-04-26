@@ -221,12 +221,23 @@ export function useGameRoom(roomId: string) {
       });
     };
     const onError = (payload: { message: string }) => setError(payload.message);
+    const onPlayerDisconnected = (payload: { playerSocketId: string; playerName?: string }) => {
+      if (payload.playerName) {
+        setError(`Player "${payload.playerName}" left the game.`);
+      }
+    };
 
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on(GAME_EVENTS.GAME_STATE_UPDATE, onState);
     socket.on(GAME_EVENTS.ROUND_RESULT, onRound);
     socket.on(GAME_EVENTS.ERROR, onError);
+    socket.on(GAME_EVENTS.PLAYER_DISCONNECTED, onPlayerDisconnected);
+    socket.on(GAME_EVENTS.GAME_OVER, (payload: { reason?: string; winnerTeamId?: string }) => {
+      if (payload.reason === 'playerLeft') {
+        setError(`Game Ended: Opponent left the game.`);
+      }
+    });
 
     if (!socket.connected) {
       socket.connect();
@@ -240,6 +251,8 @@ export function useGameRoom(roomId: string) {
       socket.off(GAME_EVENTS.GAME_STATE_UPDATE, onState);
       socket.off(GAME_EVENTS.ROUND_RESULT, onRound);
       socket.off(GAME_EVENTS.ERROR, onError);
+      socket.off(GAME_EVENTS.PLAYER_DISCONNECTED, onPlayerDisconnected);
+      socket.off(GAME_EVENTS.GAME_OVER, () => {});
     };
   }, [hasValidRoomId, playerId, playerName, roomId]);
 
