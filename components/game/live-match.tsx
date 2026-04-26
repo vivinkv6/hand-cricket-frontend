@@ -271,7 +271,7 @@ export function LiveMatch({
                         {displayRoundResult ? (
                             <motion.div key={displayRoundResult.deliveryNumber} initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex flex-col items-center">
                                 <div className="broadcast-label text-primary mb-2">Delivery Result</div>
-                                <div className={`text-8xl font-black italic drop-shadow-2xl ${displayRoundResult.isOut ? "text-red-500" : "text-white"}`}>
+                                <div className={`text-5xl sm:text-7xl lg:text-8xl font-black italic drop-shadow-2xl ${displayRoundResult.isOut ? "text-red-500" : "text-white"}`}>
                                     {displayRoundResult.label}
                                 </div>
                             </motion.div>
