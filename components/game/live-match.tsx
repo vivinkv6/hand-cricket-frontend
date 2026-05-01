@@ -493,9 +493,10 @@ export function LiveMatch({
         )}
       </AnimatePresence>
 
-      {/* BOWLER SELECTION MODAL */}
+      {/* BOWLER SELECTION MODAL - Team mode only */}
       {innings && 
        room.status === 'live' && 
+       room.mode === 'team' &&
        innings.pendingBowlerSelection && 
        (!shouldDelayBowlerSelection || bowlerSelectionDelayComplete) &&
        me && 
