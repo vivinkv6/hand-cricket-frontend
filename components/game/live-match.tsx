@@ -127,6 +127,17 @@ export function LiveMatch({
     priorityWicketResult ??
     (!hasAnyLockedSelection ? latestRoomResult : null) ??
     roundResult;
+  const currentOverHistory = useMemo(() => {
+    if (!innings) {
+      return [];
+    }
+
+    return (room.ballHistory ?? []).filter(
+      (ball) =>
+        ball.inningsNumber === innings.number &&
+        ball.overNumber === room.gameState.currentOver,
+    );
+  }, [innings, room.ballHistory, room.gameState.currentOver]);
   const isAwaitingResponse = Boolean(
     room.status === "live" &&
       innings &&
@@ -311,7 +322,7 @@ export function LiveMatch({
 
                   <div className="flex justify-center items-center gap-3">
                     {Array.from({ length: 6 }).map((_, i) => {
-                      const ballData = innings?.overHistory?.[i];
+                      const ballData = currentOverHistory[i];
                       const isHighlight = i === highlightIndex;
                       
                       return (

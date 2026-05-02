@@ -21,6 +21,10 @@ function normalizeName(value: string | null | undefined) {
   return (value ?? "").trim().toLowerCase();
 }
 
+function createActionId() {
+  return crypto.randomUUID();
+}
+
 export function readStoredSession(roomId: string) {
   if (typeof window === "undefined") {
     return null;
@@ -320,6 +324,7 @@ export function useGameRoom(roomId: string) {
     await emitWithAck(event, {
       roomId,
       playerId,
+      actionId: createActionId(),
       ...payload,
     });
   };
