@@ -78,16 +78,24 @@ export function useSoundEffects(args: {
   }, [args.roundResult]);
 
   useEffect(() => {
-    if (!args.result || !soundsRef.current || !args.myTeamId) {
+    if (!args.result || !soundsRef.current) {
       return;
     }
 
-    const key = `${args.result.winnerTeamId ?? "tie"}-${args.result.reason}-${args.myTeamId}`;
+    const audienceKey = args.myTeamId ?? "spectator";
+    const key = `${args.result.winnerTeamId ?? "tie"}-${args.result.reason}-${audienceKey}`;
     if (lastResultRef.current === key) {
       return;
     }
 
     lastResultRef.current = key;
+    if (!args.myTeamId) {
+      if (args.result.winnerTeamId) {
+        soundsRef.current.win.play();
+      }
+      return;
+    }
+
     if (args.result.winnerTeamId === args.myTeamId) {
       soundsRef.current.win.play();
       return;

@@ -89,7 +89,8 @@ export function saveStoredSession(session: SessionState) {
   );
 }
 
-export function useGameRoom(roomId: string) {
+export function useGameRoom(roomId: string, options?: { spectator?: boolean }) {
+  const spectator = options?.spectator ?? false;
   const hasValidRoomId = isValidRoomId(roomId);
   const [room, setRoom] = useState<PublicRoomState | null>(null);
   const [playerId, setPlayerId] = useState<string | null>(null);
@@ -99,6 +100,10 @@ export function useGameRoom(roomId: string) {
   const [roundResult, setRoundResult] = useState<RoundResult | null>(null);
 
   useEffect(() => {
+    if (spectator) {
+      return;
+    }
+
     const session = readStoredSession(roomId);
     if (session) {
       setPlayerId(session.playerId || null);
@@ -107,7 +112,7 @@ export function useGameRoom(roomId: string) {
       const globalName = window.localStorage.getItem(USERNAME_KEY);
       if (globalName) setPlayerName(globalName);
     }
-  }, [roomId]);
+  }, [roomId, spectator]);
 
   useEffect(() => {
     if (!error) return;
@@ -124,6 +129,29 @@ export function useGameRoom(roomId: string) {
 
     const onConnect = async () => {
       setConnected(true);
+
+      if (spectator) {
+        try {
+          const response = await emitWithAck<{
+            ok: boolean;
+            room?: PublicRoomState;
+          }>(GAME_EVENTS.JOIN_ROOM, {
+            roomId,
+            playerName: "Spectator",
+            role: "spectator",
+          });
+
+          if (response.room) {
+            setRoom(response.room);
+          }
+        } catch (joinError) {
+          setError(
+            joinError instanceof Error ? joinError.message : "Unable to spectate room.",
+          );
+        }
+
+        return;
+      }
 
       const session = readStoredSession(roomId);
       const nameToUse =
@@ -250,6 +278,9 @@ export function useGameRoom(roomId: string) {
     }
 
     return () => {
+      if (spectator && socket.connected) {
+        void emitWithAck(GAME_EVENTS.LEAVE_ROOM, { roomId }).catch(() => undefined);
+      }
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
       socket.off(GAME_EVENTS.GAME_STATE_UPDATE, onState);
@@ -258,7 +289,7 @@ export function useGameRoom(roomId: string) {
       socket.off(GAME_EVENTS.PLAYER_DISCONNECTED, onPlayerDisconnected);
       socket.off(GAME_EVENTS.GAME_OVER, () => {});
     };
-  }, [hasValidRoomId, playerId, playerName, roomId]);
+  }, [hasValidRoomId, playerId, playerName, roomId, spectator]);
 
   const me = useMemo(
     () =>
@@ -352,5 +383,6 @@ export function useGameRoom(roomId: string) {
       renameTeam: (teamId: TeamId, name: string) =>
         runAction(GAME_EVENTS.RENAME_TEAM, { teamId, name }),
     },
+    spectator,
   };
 }

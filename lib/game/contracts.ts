@@ -1,6 +1,7 @@
 export const GAME_EVENTS = {
   CREATE_ROOM: "CREATE_ROOM",
   JOIN_ROOM: "JOIN_ROOM",
+  LEAVE_ROOM: "LEAVE_ROOM",
   REJOIN_ROOM: "REJOIN_ROOM",
   START_GAME: "START_GAME",
   SELECT_TOSS: "SELECT_TOSS",
@@ -33,6 +34,7 @@ export const SOUNDS = {
 
 export type GameMode = "solo" | "duel" | "team";
 export type TeamId = "A" | "B";
+export type ClientRole = "player" | "spectator";
 export type GameStatus =
   | "waiting"
   | "ready"
@@ -140,6 +142,7 @@ export interface PublicRoomState {
   updatedAt: string;
   lastActionAt: string;
   awaitingPlayerIds: string[];
+  spectatorCount: number;
 }
 
 export interface SessionState {
@@ -147,4 +150,58 @@ export interface SessionState {
   playerId: string;
   playerName: string;
   role?: "batter" | "bowler" | null;
+}
+
+export interface ReplayEvent {
+  inningsNumber: 1 | 2;
+  ballNumber: number;
+  over: number;
+  ballInOver: number;
+  batsmanId: string | null;
+  batsmanName: string | null;
+  batsmanChoice: number;
+  bowlerId: string | null;
+  bowlerName: string | null;
+  bowlerChoice: number;
+  battingTeamId: TeamId | null;
+  bowlingTeamId: TeamId | null;
+  battingTeamName: string | null;
+  bowlingTeamName: string | null;
+  result: string;
+  runs: number;
+  timestamp: string;
+  highlightTags: string[];
+}
+
+export interface ReplayMetadata {
+  mode: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  targetScore: number | null;
+  result: MatchResult | null;
+  players: Array<{
+    id: string;
+    name: string;
+    teamId: TeamId;
+    isBot: boolean;
+  }>;
+  teams: Array<{
+    id: TeamId;
+    name: string;
+    captainId: string | null;
+  }>;
+}
+
+export interface MatchReplayResponse {
+  matchId: string;
+  segment: {
+    cursor: number;
+    limit: number;
+    nextCursor: number | null;
+    hasMore: boolean;
+    totalEvents: number;
+  };
+  metadata: ReplayMetadata;
+  events: ReplayEvent[];
 }

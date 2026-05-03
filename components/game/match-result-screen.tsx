@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { motion } from "framer-motion";
 import type { PlayerState, PublicRoomState } from "@/lib/game/contracts";
 import {
@@ -135,7 +136,7 @@ export function MatchResultScreen({
         </motion.div>
       )}
 
-      <footer className="w-full max-w-2xl flex gap-4 mb-24">
+      <footer className="w-full max-w-3xl flex flex-wrap gap-4 mb-24">
 
          {room.rematchVotes[me.id] ? (
             <div className="flex-1 glass-panel py-5 rounded-2xl border-primary/30 flex items-center justify-center gap-3">
@@ -156,6 +157,12 @@ export function MatchResultScreen({
          >
            Main Menu
          </button>
+         <Link
+           href={`/replay/${room.id}?returnTo=room`}
+           className="flex-1 glass-panel py-5 rounded-2xl broadcast-title text-xl text-center hover:bg-white/10 transition-colors"
+         >
+           Watch Replay
+         </Link>
       </footer>
 
 
@@ -173,4 +180,3 @@ export function MatchResultScreen({
     </main>
   );
 }
-

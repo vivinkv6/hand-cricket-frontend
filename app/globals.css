@@ -8,6 +8,9 @@
   --color-accent: #38bdf8; /* Blue */
   --color-surface: #0a0a0a;
   --color-glass: rgba(255, 255, 255, 0.05);
+  --color-boundary: #fb7185;
+  --color-surge: #f97316;
+  --color-calm: #22c55e;
 }
 
 @layer base {
@@ -57,6 +60,38 @@
     background: linear-gradient(90deg, #f0c33c 0%, #edaf32 100%);
     box-shadow: 0 8px 32px -4px rgba(240, 195, 60, 0.3);
   }
+
+  .broadcast-stage {
+    background:
+      radial-gradient(circle at 20% 20%, rgba(250, 204, 21, 0.14), transparent 28%),
+      radial-gradient(circle at 80% 0%, rgba(56, 189, 248, 0.16), transparent 26%),
+      radial-gradient(circle at 50% 100%, rgba(249, 115, 22, 0.12), transparent 32%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0));
+  }
+
+  .highlight-shell {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .highlight-shell::before {
+    content: "";
+    position: absolute;
+    inset: -30%;
+    background: conic-gradient(
+      from 180deg,
+      transparent 0deg,
+      rgba(250, 204, 21, 0.28) 70deg,
+      transparent 160deg,
+      rgba(56, 189, 248, 0.22) 250deg,
+      transparent 360deg
+    );
+    filter: blur(36px);
+    opacity: 0.5;
+    z-index: -1;
+    animation: orbit-glow 10s linear infinite;
+  }
 }
 
 /* Custom Utilities */
@@ -74,6 +109,35 @@
   100% { transform: scale(1); }
 }
 
+@keyframes orbit-glow {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.08); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+@keyframes shimmer-sweep {
+  0% { transform: translateX(-120%) skewX(-18deg); opacity: 0; }
+  25% { opacity: 0.35; }
+  100% { transform: translateX(220%) skewX(-18deg); opacity: 0; }
+}
+
+@keyframes crowd-wave {
+  0%, 100% { transform: translateY(0px); opacity: 0.75; }
+  50% { transform: translateY(-6px); opacity: 1; }
+}
+
 .animate-score {
   animation: score-pulse 0.3s ease-out;
+}
+
+.animate-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.18) 50%, transparent 80%);
+  animation: shimmer-sweep 2.8s ease-in-out infinite;
+}
+
+.animate-crowd {
+  animation: crowd-wave 1.8s ease-in-out infinite;
 }

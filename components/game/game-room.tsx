@@ -6,11 +6,20 @@ import { useEffect, useRef, useState } from "react";
 import { LiveMatch } from "@/components/game/live-match";
 import { MatchResultScreen } from "@/components/game/match-result-screen";
 import { RoomLobby } from "@/components/game/room-lobby";
+import { SpectatorRoom } from "@/components/game/spectator-room";
 import { useGameRoom } from "@/hooks/use-game-room";
 import { useSoundEffects } from "@/hooks/use-sound-effects";
 
-export function GameRoom({ roomId }: { roomId: string }) {
-  const { room, me, error, connected, roundResult, actions } = useGameRoom(roomId);
+export function GameRoom({
+  roomId,
+  spectator = false,
+}: {
+  roomId: string;
+  spectator?: boolean;
+}) {
+  const { room, me, error, connected, roundResult, actions } = useGameRoom(roomId, {
+    spectator,
+  });
   const [showWicketTransition, setShowWicketTransition] = useState(false);
   const effectiveRoundResult = useMemo(
     () =>
@@ -81,7 +90,7 @@ const { playClick } = useSoundEffects({
     room?.status,
   ]);
 
-  if (!room || !me) {
+  if (!room || (!me && !spectator)) {
     return (
       <main className="stadium-shell flex min-h-screen items-center justify-center px-4 text-white">
         <div className="glass-panel max-w-lg rounded-[2rem] p-8 text-center">
@@ -101,11 +110,24 @@ const { playClick } = useSoundEffects({
     );
   }
 
+  if (spectator) {
+    return (
+      <SpectatorRoom
+        room={room}
+        connected={connected}
+        error={error}
+        roundResult={effectiveRoundResult}
+      />
+    );
+  }
+
+  const activeMe = me!;
+
   if (room.status === "completed" && !showWicketTransition) {
     return (
       <MatchResultScreen
         room={room}
-        me={me}
+        me={activeMe}
         connected={connected}
         error={error}
         playClick={playClick}
@@ -118,7 +140,7 @@ const { playClick } = useSoundEffects({
     return (
       <LiveMatch
         room={room}
-        me={me}
+        me={activeMe}
         connected={connected}
         error={error}
         roundResult={effectiveRoundResult}
@@ -131,7 +153,7 @@ const { playClick } = useSoundEffects({
   return (
     <RoomLobby
       room={room}
-      me={me}
+      me={activeMe}
       connected={connected}
       error={error}
       playClick={playClick}

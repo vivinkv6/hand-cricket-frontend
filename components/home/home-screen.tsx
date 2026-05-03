@@ -45,6 +45,8 @@ export function HomeScreen() {
     Boolean(playerName.trim()) &&
     isValidRoomId(normalizedRoomCode) &&
     !loadingState;
+  const canSpectate =
+    selectedMode !== "solo" && isValidRoomId(normalizedRoomCode) && !loadingState;
 
   const navigateToRoom = (
     roomId: unknown,
@@ -66,6 +68,22 @@ export function HomeScreen() {
     }
 
     return safePlayerName;
+  };
+
+  const onSpectate = () => {
+    try {
+      playClick();
+      setError("");
+      if (!isValidRoomId(normalizedRoomCode)) {
+        throw new Error("Enter a valid room code.");
+      }
+
+      router.push(`/spectate/${normalizedRoomCode}`);
+    } catch (spectateError) {
+      setError(
+        spectateError instanceof Error ? spectateError.message : "Unable to open spectator mode.",
+      );
+    }
   };
 
   const onCreate = async () => {
@@ -266,6 +284,14 @@ export function HomeScreen() {
                         className="rounded-xl bg-white px-4 py-3 font-semibold text-slate-950 transition hover:bg-slate-100 disabled:opacity-60 sm:rounded-[1rem]"
                       >
                         {loadingState === "join" ? "Joining" : "Join"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={onSpectate}
+                        disabled={!canSpectate}
+                        className="rounded-xl border border-primary/35 bg-primary px-4 py-3 font-semibold text-slate-950 transition hover:brightness-110 disabled:opacity-60 sm:rounded-[1rem]"
+                      >
+                        Watch Live
                       </button>
                     </div>
                   </div>
