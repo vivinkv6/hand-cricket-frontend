@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Hand Cricket Client
 
-## Getting Started
+This client powers the live player experience for Hand Cricket. It focuses on quick room entry, clear match flow, and a realtime multiplayer experience.
 
-First, run the development server:
+## What The Game Includes
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Solo matches against a bot
+- Private `1v1` matches
+- Team matches from `2v2` to `5v5`
+- Spectator mode for watching live rooms
+- Replay viewing for completed matches
+- Reconnect support so players can return to an active room after refresh
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Game Modes
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `Solo`
+  - A fast practice mode against a bot
+  - Starts quickly with minimal setup
+- `1v1`
+  - A private room for head-to-head play
+  - Each side controls one player
+- `Teams`
+  - Team-based matches from `2v2` to `5v5`
+  - Captains manage team flow during the match
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## How A Match Flows
 
-## Learn More
+- A player creates a room or joins an existing room
+- Teams are arranged before the game begins
+- The match starts with a toss
+- The toss winner decides whether to bat or bowl first
+- During live play, the batter and bowler choose numbers for each delivery
+- If the numbers match, it is a wicket
+- If the numbers do not match, the batter scores runs
+- After the first innings ends, the teams switch roles
+- The second side chases the target
+- The match ends with a result screen and rematch option
 
-To learn more about Next.js, take a look at the following resources:
+## What Players See
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- A home screen for creating, joining, or spectating rooms
+- A lobby for room setup before the match begins
+- A live match screen for active gameplay
+- A spectator view for watching without playing
+- A result screen after the match ends
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## What Has Been Built In The Client
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Smooth room creation and join flow
+- Room-code based entry for multiplayer matches
+- Spectator access for live rooms
+- Visual handling for toss, live turns, innings switch, and match result
+- Support for captain-led team play
+- Local session memory for reconnecting players
+- Audio feedback and mute support
+- Replay route for match viewing
